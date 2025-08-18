@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -25,6 +26,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { FormError, FormSuccess } from "@/components/auth/FormComponents";
+import { useRouter } from "next/navigation";
 
 const formSchema = z.object({
   username: z.string().min(2, {
@@ -38,6 +40,7 @@ const Page = () => {
  const [success, setsuccess] = useState<string | undefined>("");
   const [error, setError] = useState<string | undefined>("");
   const [isPending, setTransition] = useTransition();
+  const router = useRouter();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -49,10 +52,12 @@ const Page = () => {
 
   // 2. Define a submit handler.
   function onSubmit(values: z.infer<typeof formSchema>) {
-    setError("Login failed");
+    setsuccess("Login Successful");
     setTimeout(()=>{
-        setError("");
-    }, 3000);
+
+      router.push("/dashboard");
+      // setsuccess("");
+    }, 2000);
 
     console.log(values);
   }
