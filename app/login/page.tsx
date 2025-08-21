@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
-  FormDescription,
+  // FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -20,7 +20,7 @@ import {
   Card,
   CardAction,
   CardContent,
-  CardDescription,
+  // CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
@@ -38,8 +38,8 @@ const formSchema = z.object({
 });
 const Page = () => {
  const [success, setsuccess] = useState<string | undefined>("");
-  const [error, setError] = useState<string | undefined>("");
-  const [isPending, setTransition] = useTransition();
+  // const [error, setError] = useState<string | undefined>("");
+  // const [isPending, setTransition] = useTransition();
   const router = useRouter();
 
   const form = useForm<z.infer<typeof formSchema>>({
