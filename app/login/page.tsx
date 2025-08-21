@@ -38,8 +38,8 @@ const formSchema = z.object({
 });
 const Page = () => {
  const [success, setsuccess] = useState<string | undefined>("");
-  // const [error, setError] = useState<string | undefined>("");
-  // const [isPending, setTransition] = useTransition();
+  const [error, setError] = useState<string | undefined>("");
+  const [isPending, setTransition] = useTransition();
   const router = useRouter();
 
   const form = useForm<z.infer<typeof formSchema>>({
