@@ -1,0 +1,55 @@
+// schema.prisma
+
+datasource db {
+  provider = "postgresql"   // or "mysql" or "sqlite"
+  url      = env("DATABASE_URL") // Environment variable for database connection
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  username          String      @id 
+  passwordHash String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Lock {
+  id        Int        @id @default(autoincrement())
+  name      String
+  location  String?
+  status    Boolean    @default(true)
+  createdAt DateTime   @default(now())
+
+  rfidCards RfidCard[]
+  logs      AccessLog[]
+}
+
+model RfidCard {
+  // id        Int      @id @default(autoincrement())
+  rfidTag   String   @id @unique
+  ownerName String?
+  isActive  Boolean  @default(true)
+  issuedAt  DateTime @default(now())
+
+  lockId Int
+  lock   Lock   @relation(fields: [lockId], references: [id])
+
+  logs   AccessLog[]
+}
+
+model AccessLog {
+  id            Int      @id @default(autoincrement())
+  rfidTag       String
+  accessGranted Boolean
+  eventType     String   
+  timestamp     DateTime @default(now())
+
+  lockId    Int
+  lock      Lock     @relation(fields: [lockId], references: [id])
+
+  // cardId    Int?     
+  card      RfidCard? @relation(fields: [rfidTag], references: [rfidTag])
+}

@@ -1,12 +1,13 @@
 "use client"
 import React, { useState, useEffect } from 'react';
-import { Lock, Unlock, Clock, User, Calendar, Shield, AlertCircle, CheckCircle } from 'lucide-react';
+import { Lock, Unlock, Clock, User, Calendar, Shield, AlertCircle, CheckCircle, LogOut } from 'lucide-react';
 
 const Dashboard = () => {
   const [isLocked, setIsLocked] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [greeting, setGreeting] = useState('');
-  
+  const [user, setUser] = useState(null);
+  const [isLoaded, setIsLoaded] = useState(false);
   // Mock entry logs data
   const [entryLogs, setEntryLogs] = useState([
     {
@@ -53,6 +54,13 @@ const Dashboard = () => {
 
   // Update time and greeting
   useEffect(() => {
+    // Note: localStorage is not available in Claude artifacts, so this check is commented out
+    const token = localStorage.getItem('token');
+    if (!token) {
+      window.location.href = '/login';
+      return;
+    }
+    setIsLoaded(true);
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
@@ -93,6 +101,15 @@ const Dashboard = () => {
     }, 5000)
   };
 
+  const handleSignOut = () => {
+    // In a real app, you would clear the token and redirect
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    
+    // For demo purposes, show an alert
+    // alert('Sign out functionality - would redirect to login page');
+  };
+
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('en-US', {
       hour: '2-digit',
@@ -113,6 +130,18 @@ const Dashboard = () => {
     return `${formatDate(date)} at ${formatTime(date)}`;
   };
 
+  if(!isLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center ">
+        <div className="flex flex-col items-center gap-6">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-amber-400 border-opacity-60"></div>
+          <h2 className="text-2xl font-bold text-amber-100">Loading Dashboard...</h2>
+          <p className="text-slate-400">Please wait while we prepare your smart lock dashboard.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen p-6">
       <div className="max-w-7xl mx-auto">
@@ -121,22 +150,35 @@ const Dashboard = () => {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="md:text-4xl text-xm font-bold text-amber-50 mb-2">
+              <h1 className="md:text-4xl text-xl font-bold text-amber-50 mb-2">
                 Smart Lock Dashboard
               </h1>
               <p className="md:text-xl text-xs text-amber-100">
                 {greeting}! Welcome back.
               </p>
             </div>
-            <div className="text-right text-amber-100">
-              <div className="flex items-center gap-2 mb-1">
-                <Clock className="w-5 h-5" />
-                <span className="md:text-lg text-xs font-mono">{formatTime(currentTime)}</span>
+            
+            {/* Time and Sign Out Section */}
+            <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 sm:gap-4">
+              <div className="text-right text-amber-100">
+                <div className="flex items-center justify-end gap-2 mb-1">
+                  <Clock className="w-4 sm:w-5 h-4 sm:h-5" />
+                  <span className="text-xs sm:text-sm md:text-lg font-mono">{formatTime(currentTime)}</span>
+                </div>
+                <div className="flex items-center justify-end gap-2">
+                  <Calendar className="w-3 sm:w-4 h-3 sm:h-4" />
+                  <span className="text-xs md:text-sm">{formatDate(currentTime)}</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4" />
-                <span className="md:text-sm text-xs">{formatDate(currentTime)}</span>
-              </div>
+              
+              {/* Sign Out Button */}
+              <button
+                onClick={handleSignOut}
+                className="flex items-center gap-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 hover:border-red-500/50 text-red-400 hover:text-red-300 px-4 py-2 rounded-lg transition-all duration-200"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="hidden sm:inline text-sm font-medium">Sign Out</span>
+              </button>
             </div>
           </div>
         </div>
@@ -146,7 +188,7 @@ const Dashboard = () => {
           
           {/* Current Lock Status */}
           <div className="lg:col-span-1">
-            <div className="bg-slate-800/60 backdrop-blur-sm rounded-xl p-6 border border-slate-700/5">
+            <div className="bg-slate-800/60 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50">
               <div className="flex items-center gap-3 mb-4">
                 <Shield className="w-6 h-6 text-amber-400" />
                 <h2 className="md:text-xl font-semibold text-amber-50">Current Status</h2>
@@ -197,24 +239,6 @@ const Dashboard = () => {
                     </p>
                   </div>
                 </button>
-                
-                {/* <button
-                  onClick={handleLockToggle}
-                  disabled={isLocked}
-                  className={`p-6 rounded-lg border-2 transition-all duration-300 ${
-                    isLocked
-                      ? 'bg-gray-600/20 border-gray-600/50 text-gray-400 cursor-not-allowed'
-                      : 'bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20 hover:border-red-500/50'
-                  }`}
-                >
-                  <Lock className="w-8 h-8 mx-auto mb-3" />
-                  <div className="text-center">
-                    <h3 className="font-semibold text-lg mb-1">Lock Door</h3>
-                    <p className="text-sm opacity-80">
-                      {isLocked ? 'Already locked' : 'Secure access'}
-                    </p>
-                  </div>
-                </button> */}
               </div>
             </div>
           </div>
