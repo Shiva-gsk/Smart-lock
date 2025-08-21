@@ -1,6 +1,20 @@
 "use client"
 import React, { useState, useEffect } from 'react';
 import { Lock, Unlock, Clock, User, Calendar, Shield, AlertCircle, CheckCircle, LogOut } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Checkbox } from '@/components/ui/checkbox';
 
 const Dashboard = () => {
   const [isLocked, setIsLocked] = useState(true);
@@ -46,7 +60,7 @@ const Dashboard = () => {
       id: 5,
       rfid: 'RFID-001-ABC',
       name: 'John Doe',
-      action: 'lock',
+      action: 'unlock',
       timestamp: new Date('2025-01-17T18:00:00'),
       status: 'success'
     }
@@ -83,7 +97,7 @@ const Dashboard = () => {
   const handleLockToggle = () => {
     const newStatus = !isLocked;
     setIsLocked(newStatus);
-    
+
     // Add new entry to logs
     const newEntry = {
       id: entryLogs.length + 1,
@@ -93,11 +107,11 @@ const Dashboard = () => {
       timestamp: new Date(),
       status: 'success'
     };
-    
+
     setEntryLogs(prev => [newEntry, ...prev]);
 
-    setTimeout(()=>{
-       setIsLocked(!newStatus);
+    setTimeout(() => {
+      setIsLocked(!newStatus);
     }, 5000)
   };
 
@@ -105,7 +119,7 @@ const Dashboard = () => {
     // In a real app, you would clear the token and redirect
     localStorage.removeItem('token');
     window.location.href = '/login';
-    
+
     // For demo purposes, show an alert
     // alert('Sign out functionality - would redirect to login page');
   };
@@ -130,7 +144,7 @@ const Dashboard = () => {
     return `${formatDate(date)} at ${formatTime(date)}`;
   };
 
-  if(!isLoaded) {
+  if (!isLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center ">
         <div className="flex flex-col items-center gap-6">
@@ -145,7 +159,7 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen p-6">
       <div className="max-w-7xl mx-auto">
-        
+
         {/* Header Section */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
@@ -157,7 +171,7 @@ const Dashboard = () => {
                 {greeting}! Welcome back.
               </p>
             </div>
-            
+
             {/* Time and Sign Out Section */}
             <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 sm:gap-4">
               <div className="text-right text-amber-100">
@@ -170,7 +184,7 @@ const Dashboard = () => {
                   <span className="text-xs md:text-sm">{formatDate(currentTime)}</span>
                 </div>
               </div>
-              
+
               {/* Sign Out Button */}
               <button
                 onClick={handleSignOut}
@@ -185,7 +199,7 @@ const Dashboard = () => {
 
         {/* Status and Controls Grid */}
         <div className="grid lg:grid-cols-3 gap-6 mb-8">
-          
+
           {/* Current Lock Status */}
           <div className="lg:col-span-1">
             <div className="bg-slate-800/60 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50">
@@ -193,16 +207,15 @@ const Dashboard = () => {
                 <Shield className="w-6 h-6 text-amber-400" />
                 <h2 className="md:text-xl font-semibold text-amber-50">Current Status</h2>
               </div>
-              
+
               <div className="text-center py-8">
-                <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full mb-4 ${
-                  isLocked 
-                    ? 'bg-red-500/20 text-red-400' 
-                    : 'bg-green-500/20 text-green-400'
-                }`}>
+                <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full mb-4 ${isLocked
+                  ? 'bg-red-500/20 text-red-400'
+                  : 'bg-green-500/20 text-green-400'
+                  }`}>
                   {isLocked ? <Lock className="w-10 h-10" /> : <Unlock className="w-10 h-10" />}
                 </div>
-                
+
                 <h3 className="md:text-2xl text-lg font-bold text-amber-50 mb-2">
                   {isLocked ? 'LOCKED' : 'UNLOCKED'}
                 </h3>
@@ -220,16 +233,15 @@ const Dashboard = () => {
                 <User className="w-6 h-6 text-amber-400" />
                 Control Panel
               </h2>
-              
+
               <div className="grid gap-4">
                 <button
                   onClick={handleLockToggle}
                   disabled={!isLocked}
-                  className={`p-6 rounded-lg border-2 transition-all duration-300 ${
-                    !isLocked
-                      ? 'bg-gray-600/20 border-gray-600/50 text-gray-400 cursor-not-allowed'
-                      : 'bg-green-500/10 border-green-500/30 text-green-400 hover:bg-green-500/20 hover:border-green-500/50'
-                  }`}
+                  className={`p-6 rounded-lg border-2 transition-all duration-300 ${!isLocked
+                    ? 'bg-gray-600/20 border-gray-600/50 text-gray-400 cursor-not-allowed'
+                    : 'bg-green-500/10 border-green-500/30 text-green-400 hover:bg-green-500/20 hover:border-green-500/50'
+                    }`}
                 >
                   <Unlock className="w-8 h-8 mx-auto mb-3" />
                   <div className="text-center">
@@ -289,9 +301,8 @@ const Dashboard = () => {
                         ) : (
                           <Lock className="w-4 h-4 text-red-400" />
                         )}
-                        <span className={`capitalize font-medium ${
-                          log.action === 'unlock' ? 'text-green-400' : 'text-red-400'
-                        }`}>
+                        <span className={`capitalize font-medium ${log.action === 'unlock' ? 'text-green-400' : 'text-red-400'
+                          }`}>
                           {log.action}
                         </span>
                       </div>
@@ -335,9 +346,8 @@ const Dashboard = () => {
                       ) : (
                         <Lock className="w-5 h-5 text-red-400" />
                       )}
-                      <span className={`capitalize font-medium ${
-                        log.action === 'unlock' ? 'text-green-400' : 'text-red-400'
-                      }`}>
+                      <span className={`capitalize font-medium ${log.action === 'unlock' ? 'text-green-400' : 'text-red-400'
+                        }`}>
                         {log.action}
                       </span>
                     </div>
@@ -370,6 +380,67 @@ const Dashboard = () => {
                 </div>
               ))}
             </div>
+          </div>
+          <div className='flex items-center justify-center pt-6 '>
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="outline" className="w-full max-w-xs">
+          Manage RFID Cards
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md rounded-2xl shadow-xl">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-semibold">
+            Select Cards to Invalidate
+          </DialogTitle>
+          <DialogDescription className="text-slate-500">
+            Choose the RFID cards you want to revoke access for.
+          </DialogDescription>
+        </DialogHeader>
+
+        {/* Checkbox list */}
+        <div className="flex flex-col gap-4 mt-2">
+          <Label className="font-medium text-slate-700">
+            Select RFID Cards
+          </Label>
+
+          <div className="flex flex-col gap-2 max-h-48 overflow-y-auto rounded-lg border p-3 shadow-inner scrollbar-thin scrollbar-thumb-slate-300 hover:scrollbar-thumb-slate-400">
+            {Array.from(
+              entryLogs
+                .filter(log => log.name !== "Unknown User")
+                .reduce((acc, log) => {
+                  if (!acc.has(log.rfid)) acc.set(log.rfid, []);
+                  acc.get(log.rfid)!.push(log.name);
+                  return acc;
+                }, new Map<string, string[]>()),
+            ).map(([rfid, names]) => (
+              <label
+                key={rfid}
+                className="flex items-center gap-3 p-2 rounded-md hover:bg-slate-100 transition cursor-pointer"
+              >
+                <Checkbox value={rfid} />
+                <span className="text-sm text-slate-700">
+                  {Array.from(new Set(names)).join(", ")} <span className="text-slate-400">({rfid})</span>
+                </span>
+              </label>
+            ))}
+          </div>
+
+          <span className="text-xs text-slate-400">
+            Tick the cards you want to invalidate.
+          </span>
+        </div>
+
+        <DialogFooter className="sm:justify-start mt-4">
+          <DialogClose asChild>
+            <Button type="button" variant="destructive" className="w-full sm:w-auto">
+              Invalidate Selected
+            </Button>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
           </div>
         </div>
       </div>

@@ -85,7 +85,7 @@ const Page = () => {
       setTimeout(() => {
         router.push("/dashboard");
         setsuccess("");
-      }, 100);
+      }, 2000);
     } else {
       const error = await res.json();
       console.error(error);
