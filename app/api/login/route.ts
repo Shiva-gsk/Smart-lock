@@ -20,7 +20,7 @@ export async function POST(req: Request) {
   }
 
   // Generate JWT
-  const token = signJwt({ username: user.username });
+  const token = signJwt({ username: user.username, password: password });
 
   // Return token in response body
   return NextResponse.json({ token });

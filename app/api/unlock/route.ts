@@ -47,24 +47,30 @@ export async function GET(req: NextRequest) {
     }
 
     // Update lock
-    const update = await db.lock.update({
-      where: { id: 1 }, // or pass lock_id via query params if multiple locks
-      data: { status: true },
+    // const update = await db.lock.update({
+    //   where: { id: 1 }, // or pass lock_id via query params if multiple locks
+    //   data: { status: true },
+    // });
+
+    const lock = await db.lock.findFirst({
+      where: { username: userId },
     });
-
+    if (!lock) {
+      return NextResponse.json({ error: "Lock not found for user" }, { status: 404 });
+    }
     // Auto lock after 20 seconds
-    setTimeout(async () => {
-      await db.lock.update({
-        where: { id: 1 },
-        data: { status: false },
-      });
-      console.log("Lock is now locked");
-    }, 20000);
+    // setTimeout(async () => {
+    //   await db.lock.update({
+    //     where: { id: lock.id },
+    //     data: { status: false },
+    //   });
+    //   console.log("Lock is now locked");
+    // }, 5000);
 
-    return NextResponse.json({ message: "Unlocked", lock: update });
+    return NextResponse.json({ data: lock.webunlock }, { status: 200 });
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ error: "Failed to unlock" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to get lock status" }, { status: 500 });
   }
 }
 
