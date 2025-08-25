@@ -82,10 +82,10 @@ const Page = () => {
         localStorage.setItem("token", data.token);
       }
       setsuccess("Login Successful");
-      setTimeout(() => {
+      // setTimeout(() => {
         router.push("/dashboard");
         setsuccess("");
-      }, 2000);
+      // }, 1000);
     } else {
       const error = await res.json();
       console.error(error);

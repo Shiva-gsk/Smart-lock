@@ -1,5 +1,5 @@
 "use client"
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useTransition } from 'react';
 import { Lock, Unlock, Clock, User, Calendar, Shield, AlertCircle, CheckCircle, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,14 +15,22 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from '@/components/ui/checkbox';
+import { jwtDecode } from "jwt-decode";
+import { getLogs } from '../actions/getLogs';
+import { AccessLog } from '@/types';
 
 const Dashboard = () => {
   const [isLocked, setIsLocked] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [greeting, setGreeting] = useState('');
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<{ username: string; password: string } | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [logs, setLogs] = useState<AccessLog[]>([]);
+  const [isPending, startTransition] = useTransition();
+  // const [status, setStatus] = useState<boolean>(false);
   // Mock entry logs data
+
+
   const [entryLogs, setEntryLogs] = useState([
     {
       id: 1,
@@ -67,14 +75,48 @@ const Dashboard = () => {
   ]);
 
   // Update time and greeting
+
   useEffect(() => {
-    // Note: localStorage is not available in Claude artifacts, so this check is commented out
-    const token = localStorage.getItem('token');
-    if (!token) {
-      window.location.href = '/login';
-      return;
-    }
-    setIsLoaded(true);
+    startTransition(async () => {
+      // Note: localStorage is not available in Claude artifacts, so this check is commented out
+      const token = localStorage.getItem('token');
+      if (!token) {
+        window.location.href = '/login';
+        return;
+      }
+      try {
+        if (token) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const decoded: any = jwtDecode(token);
+          setUser(decoded);
+          console.log("Decoded JWT:", decoded);
+          const currLogs = await getLogs(decoded.username);
+          // Map the logs to match AccessLog type
+          setLogs(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            currLogs.map((log: any) => ({
+              ...log,
+              userName: log.card?.ownerName ?? "Unknown User",
+              lock: log.lock ?? null, // or provide a default value if needed
+            }))
+          );
+
+          // Fetch lock status from API
+          const res = await fetch(`/api/status?username=${decoded.username}`);
+          const lockStatus = await res.json();
+          setIsLocked(!lockStatus.data);
+        }
+      } catch (error) {
+        console.error("Invalid token:", error);
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+      }
+      setIsLoaded(true);
+    });
+
+  }, []);
+
+  useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
@@ -94,34 +136,51 @@ const Dashboard = () => {
     return () => clearInterval(timer);
   }, []);
 
-  const handleLockToggle = () => {
-    const newStatus = !isLocked;
-    setIsLocked(newStatus);
-
-    // Add new entry to logs
-    const newEntry = {
-      id: entryLogs.length + 1,
-      rfid: 'MANUAL-CONTROL',
-      name: 'Admin',
-      action: newStatus ? 'lock' : 'unlock',
-      timestamp: new Date(),
-      status: 'success'
-    };
-
-    setEntryLogs(prev => [newEntry, ...prev]);
-
-    setTimeout(() => {
-      setIsLocked(!newStatus);
-    }, 5000)
+  const handleLockToggle = async () => {
+    if (!user) return;
+    // startTransition(async () => {
+    try {
+      const res = await fetch('/api/unlock', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: user.username,
+          password: user.password,
+        }),
+      });
+      if (res.ok) {
+        setIsLocked(false);
+        // setTimeout(async () => {
+        //   // setIsLocked(true);
+        //   const res = await fetch('/api/lock', {
+        //     method: 'POST',
+        //     headers: {
+        //       'Content-Type': 'application/json',
+        //     },
+        //     body: JSON.stringify({
+        //       username: user.username,
+        //       password: user.password,
+        //     }),
+        //   });
+        //   setIsLocked(true);
+        // }, 5000);
+      } else {
+        // Optionally handle error
+        alert('Failed to unlock. Please try again.');
+      }
+    } catch (error) {
+      console.error('Unlock error:', error);
+      alert('An error occurred while unlocking.');
+    }
+    // });
   };
 
   const handleSignOut = () => {
-    // In a real app, you would clear the token and redirect
+
     localStorage.removeItem('token');
     window.location.href = '/login';
-
-    // For demo purposes, show an alert
-    // alert('Sign out functionality - would redirect to login page');
   };
 
   const formatTime = (date: Date) => {
@@ -264,7 +323,7 @@ const Dashboard = () => {
               <h2 className="text-xl font-semibold text-amber-50">Recent Entry Logs</h2>
             </div>
             <span className="bg-amber-500/20 text-amber-400 px-2 py-1 rounded-full text-sm font-medium sm:ml-auto">
-              {entryLogs.length} entries
+              {logs.length} entries
             </span>
           </div>
 
@@ -281,29 +340,29 @@ const Dashboard = () => {
                 </tr>
               </thead>
               <tbody>
-                {entryLogs.map((log) => (
+                {logs.map((log) => (
                   <tr key={log.id} className="border-b border-slate-700/30 hover:bg-slate-700/20 transition-colors">
                     <td className="py-4 px-4">
                       <code className="bg-slate-700/50 text-amber-300 px-2 py-1 rounded text-sm">
-                        {log.rfid}
+                        {log.rfidTag}
                       </code>
                     </td>
                     <td className="py-4 px-4">
                       <div className="flex items-center gap-2">
                         <User className="w-4 h-4 text-slate-400" />
-                        <span className="text-amber-50 font-medium">{log.name}</span>
+                        <span className="text-amber-50 font-medium">{log.userName}</span>
                       </div>
                     </td>
                     <td className="py-4 px-4">
                       <div className="flex items-center gap-2">
-                        {log.action === 'unlock' ? (
+                        {log.eventType === 'unlock' ? (
                           <Unlock className="w-4 h-4 text-green-400" />
                         ) : (
                           <Lock className="w-4 h-4 text-red-400" />
                         )}
-                        <span className={`capitalize font-medium ${log.action === 'unlock' ? 'text-green-400' : 'text-red-400'
+                        <span className={`capitalize font-medium ${log.eventType === 'unlock' ? 'text-green-400' : 'text-red-400'
                           }`}>
-                          {log.action}
+                          {log.eventType}
                         </span>
                       </div>
                     </td>
@@ -314,7 +373,7 @@ const Dashboard = () => {
                     </td>
                     <td className="py-4 px-4">
                       <div className="flex items-center gap-2">
-                        {log.status === 'success' ? (
+                        {log.accessGranted === true ? (
                           <>
                             <CheckCircle className="w-4 h-4 text-green-500" />
                             <span className="text-green-500 font-medium">Success</span>
@@ -382,64 +441,64 @@ const Dashboard = () => {
             </div>
           </div>
           <div className='flex items-center justify-center pt-6 '>
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="outline" className="w-full max-w-xs">
-          Manage RFID Cards
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md rounded-2xl shadow-xl">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-semibold">
-            Select Cards to Invalidate
-          </DialogTitle>
-          <DialogDescription className="text-slate-500">
-            Choose the RFID cards you want to revoke access for.
-          </DialogDescription>
-        </DialogHeader>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="w-full max-w-xs">
+                  Manage RFID Cards
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md rounded-2xl shadow-xl">
+                <DialogHeader>
+                  <DialogTitle className="text-xl font-semibold">
+                    Select Cards to Invalidate
+                  </DialogTitle>
+                  <DialogDescription className="text-slate-500">
+                    Choose the RFID cards you want to revoke access for.
+                  </DialogDescription>
+                </DialogHeader>
 
-        {/* Checkbox list */}
-        <div className="flex flex-col gap-4 mt-2">
-          <Label className="font-medium text-slate-700">
-            Select RFID Cards
-          </Label>
+                {/* Checkbox list */}
+                <div className="flex flex-col gap-4 mt-2">
+                  <Label className="font-medium text-slate-700">
+                    Select RFID Cards
+                  </Label>
 
-          <div className="flex flex-col gap-2 max-h-48 overflow-y-auto rounded-lg border p-3 shadow-inner scrollbar-thin scrollbar-thumb-slate-300 hover:scrollbar-thumb-slate-400">
-            {Array.from(
-              entryLogs
-                .filter(log => log.name !== "Unknown User")
-                .reduce((acc, log) => {
-                  if (!acc.has(log.rfid)) acc.set(log.rfid, []);
-                  acc.get(log.rfid)!.push(log.name);
-                  return acc;
-                }, new Map<string, string[]>()),
-            ).map(([rfid, names]) => (
-              <label
-                key={rfid}
-                className="flex items-center gap-3 p-2 rounded-md hover:bg-slate-100 transition cursor-pointer"
-              >
-                <Checkbox value={rfid} />
-                <span className="text-sm text-slate-700">
-                  {Array.from(new Set(names)).join(", ")} <span className="text-slate-400">({rfid})</span>
-                </span>
-              </label>
-            ))}
-          </div>
+                  <div className="flex flex-col gap-2 max-h-48 overflow-y-auto rounded-lg border p-3 shadow-inner scrollbar-thin scrollbar-thumb-slate-300 hover:scrollbar-thumb-slate-400">
+                    {Array.from(
+                      entryLogs
+                        .filter(log => log.name !== "Unknown User")
+                        .reduce((acc, log) => {
+                          if (!acc.has(log.rfid)) acc.set(log.rfid, []);
+                          acc.get(log.rfid)!.push(log.name);
+                          return acc;
+                        }, new Map<string, string[]>()),
+                    ).map(([rfid, names]) => (
+                      <label
+                        key={rfid}
+                        className="flex items-center gap-3 p-2 rounded-md hover:bg-slate-100 transition cursor-pointer"
+                      >
+                        <Checkbox value={rfid} />
+                        <span className="text-sm text-slate-700">
+                          {Array.from(new Set(names)).join(", ")} <span className="text-slate-400">({rfid})</span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
 
-          <span className="text-xs text-slate-400">
-            Tick the cards you want to invalidate.
-          </span>
-        </div>
+                  <span className="text-xs text-slate-400">
+                    Tick the cards you want to invalidate.
+                  </span>
+                </div>
 
-        <DialogFooter className="sm:justify-start mt-4">
-          <DialogClose asChild>
-            <Button type="button" variant="destructive" className="w-full sm:w-auto">
-              Invalidate Selected
-            </Button>
-          </DialogClose>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+                <DialogFooter className="sm:justify-start mt-4">
+                  <DialogClose asChild>
+                    <Button type="button" variant="destructive" className="w-full sm:w-auto">
+                      Invalidate Selected
+                    </Button>
+                  </DialogClose>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
 
           </div>
         </div>

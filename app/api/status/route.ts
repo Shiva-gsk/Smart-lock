@@ -1,23 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db'; // adjust import if needed
+import { revalidatePath } from 'next/cache';
 
 // ✅ GET: fetch lock status from DB
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const lockId = searchParams.get("lock_id");
+    const username = searchParams.get("username");
 
-    if (!lockId) {
-      return NextResponse.json({ error: "lock_id is required" }, { status: 400 });
+    if (!username) {
+      return NextResponse.json({ error: "username is required" }, { status: 400 });
     }
 
-    const lock = await db.lock.findUnique({
-      where: { id: Number(lockId) },
+    const lock = await db.lock.findFirst({
+      where: { username: username },
     });
 
     if (!lock) {
       return NextResponse.json({ error: "Lock not found" }, { status: 404 });
     }
+
+
 
     return NextResponse.json({ data: lock.status });
   } catch (error) {
@@ -41,7 +44,7 @@ export async function POST(req: NextRequest) {
       data: { status: Boolean(status) },
     });
     console.log(updatedLock);
-
+    revalidatePath("/dashboard");
     return NextResponse.json({ data: updatedLock }, { status: 200 });
   } catch (error) {
     console.error(error);
