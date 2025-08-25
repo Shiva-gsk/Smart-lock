@@ -27,94 +27,54 @@ const Dashboard = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [logs, setLogs] = useState<AccessLog[]>([]);
   const [isPending, startTransition] = useTransition();
-  // const [status, setStatus] = useState<boolean>(false);
+  // const [refresh, setRefresh] = useState(0);
+  const [status, setStatus] = useState<boolean>(false);
   // Mock entry logs data
+  // setRefresh(1);
 
 
-  const [entryLogs, setEntryLogs] = useState([
-    {
-      id: 1,
-      rfid: 'RFID-001-ABC',
-      name: 'John Doe',
-      action: 'unlock',
-      timestamp: new Date('2025-01-18T09:30:00'),
-      status: 'success'
-    },
-    {
-      id: 2,
-      rfid: 'RFID-002-DEF',
-      name: 'Jane Smith',
-      action: 'unlock',
-      timestamp: new Date('2025-01-18T08:45:00'),
-      status: 'success'
-    },
-    {
-      id: 3,
-      rfid: 'RFID-003-GHI',
-      name: 'Mike Johnson',
-      action: 'unlock',
-      timestamp: new Date('2025-01-18T07:15:00'),
-      status: 'success'
-    },
-    {
-      id: 4,
-      rfid: 'RFID-UNKNOWN',
-      name: 'Unknown User',
-      action: 'unlock',
-      timestamp: new Date('2025-01-17T22:30:00'),
-      status: 'denied'
-    },
-    {
-      id: 5,
-      rfid: 'RFID-001-ABC',
-      name: 'John Doe',
-      action: 'unlock',
-      timestamp: new Date('2025-01-17T18:00:00'),
-      status: 'success'
-    }
-  ]);
+useEffect(() => {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    window.location.href = '/login';
+    return;
+  }
 
-  // Update time and greeting
+  // decode user once
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const decoded: any = jwtDecode(token);
+  setUser(decoded);
 
-  useEffect(() => {
-    startTransition(async () => {
-      // Note: localStorage is not available in Claude artifacts, so this check is commented out
-      const token = localStorage.getItem('token');
-      if (!token) {
-        window.location.href = '/login';
-        return;
-      }
-      try {
-        if (token) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const decoded: any = jwtDecode(token);
-          setUser(decoded);
-          console.log("Decoded JWT:", decoded);
-          const currLogs = await getLogs(decoded.username);
-          // Map the logs to match AccessLog type
-          setLogs(
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            currLogs.map((log: any) => ({
-              ...log,
-              userName: log.card?.ownerName ?? "Unknown User",
-              lock: log.lock ?? null, // or provide a default value if needed
-            }))
-          );
+  async function fetchData() {
+    try {
+      const currLogs = await getLogs(decoded.username);
+      setLogs(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        currLogs.map((log: any) => ({
+          ...log,
+          userName: log.card?.ownerName ?? "Unknown User",
+          lock: log.lock ?? null,
+        }))
+      );
 
-          // Fetch lock status from API
-          const res = await fetch(`/api/status?username=${decoded.username}`);
-          const lockStatus = await res.json();
-          setIsLocked(!lockStatus.data);
-        }
-      } catch (error) {
-        console.error("Invalid token:", error);
-        localStorage.removeItem('token');
-        window.location.href = '/login';
-      }
+      const res = await fetch(`/api/status?username=${decoded.username}`);
+      const lockStatus = await res.json();
+      setIsLocked(!lockStatus.data);
+    } catch (err) {
+      console.error("Error fetching data:", err);
+    } finally {
       setIsLoaded(true);
-    });
+    }
+  }
 
-  }, []);
+  // fetch immediately
+  fetchData();
+
+  // then poll every 2 seconds
+  const interval = setInterval(fetchData, 2000);
+
+  return () => clearInterval(interval);
+}, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -166,6 +126,7 @@ const Dashboard = () => {
         //   });
         //   setIsLocked(true);
         // }, 5000);
+        // setTimeout(() => setRefresh(prev => prev + 1), 7000);
       } else {
         // Optionally handle error
         alert('Failed to unlock. Please try again.');
@@ -393,25 +354,25 @@ const Dashboard = () => {
 
             {/* Mobile Card List */}
             <div className="flex flex-col gap-4 md:hidden">
-              {entryLogs.map((log) => (
+              {logs.map((log) => (
                 <div
                   key={log.id}
                   className="bg-slate-700/60 rounded-lg p-4 border border-slate-700/30 flex flex-col gap-2"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      {log.action === 'unlock' ? (
+                      {log.eventType === 'unlock' ? (
                         <Unlock className="w-5 h-5 text-green-400" />
                       ) : (
                         <Lock className="w-5 h-5 text-red-400" />
                       )}
-                      <span className={`capitalize font-medium ${log.action === 'unlock' ? 'text-green-400' : 'text-red-400'
+                      <span className={`capitalize font-medium ${log.eventType === 'unlock' ? 'text-green-400' : 'text-red-400'
                         }`}>
-                        {log.action}
+                        {log.eventType}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      {log.status === 'success' ? (
+                      {log.accessGranted === true ? (
                         <>
                           <CheckCircle className="w-4 h-4 text-green-500" />
                           <span className="text-green-500 font-medium text-xs">Success</span>
@@ -426,11 +387,11 @@ const Dashboard = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <User className="w-4 h-4 text-slate-400" />
-                    <span className="text-amber-50 font-medium text-sm">{log.name}</span>
+                    <span className="text-amber-50 font-medium text-sm">{log.userName}</span>
                   </div>
                   <div>
                     <code className="bg-slate-800/60 text-amber-300 px-2 py-1 rounded text-xs">
-                      {log.rfid}
+                      {log.rfidTag}
                     </code>
                   </div>
                   <div className="text-slate-300 text-xs">
@@ -465,11 +426,11 @@ const Dashboard = () => {
 
                   <div className="flex flex-col gap-2 max-h-48 overflow-y-auto rounded-lg border p-3 shadow-inner scrollbar-thin scrollbar-thumb-slate-300 hover:scrollbar-thumb-slate-400">
                     {Array.from(
-                      entryLogs
-                        .filter(log => log.name !== "Unknown User")
+                      logs
+                        .filter(log => log.userName !== "Unknown User")
                         .reduce((acc, log) => {
-                          if (!acc.has(log.rfid)) acc.set(log.rfid, []);
-                          acc.get(log.rfid)!.push(log.name);
+                          if (!acc.has(log.rfidTag)) acc.set(log.rfidTag, []);
+                          acc.get(log.rfidTag)!.push(log.userName);
                           return acc;
                         }, new Map<string, string[]>()),
                     ).map(([rfid, names]) => (
